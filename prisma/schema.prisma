@@ -1,0 +1,75 @@
+// Prisma schema for the Rental Tracker app
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_POOLED")
+}
+
+model Property {
+  id          String   @id @default(cuid())
+  name        String
+  type        String   // e.g. APARTMENT_BUILDING, APARTMENT, HOUSE, WEDDING_HALL, SHOP, OTHER
+  address     String
+  rentAmount  Float    // default/expected rent or booking rate
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+
+  units       Unit[]
+  tenants     Tenant[]
+}
+
+model Unit {
+  id          String   @id @default(cuid())
+  unitName    String   // e.g. "Flat 101"
+  rentAmount  Float
+  createdAt   DateTime @default(now())
+
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  propertyId  String
+
+  tenants     Tenant[]
+}
+
+model Tenant {
+  id           String    @id @default(cuid())
+  name         String
+  phone        String
+  email        String?
+  bookingType  String    @default("RECURRING") // RECURRING (monthly rent) or ONE_TIME (single event)
+  rentAmount   Float     // agreed amount, may differ from property default
+  dueDate      DateTime  // next due date (recurring) or event date (one-time)
+  endDate      DateTime? // optional lease/booking end date
+  startDate    DateTime  @default(now())
+  active          Boolean   @default(true)
+  notes           String?
+  flagged         Boolean   @default(false)
+  depositAmount   Float?
+  depositReturned Boolean   @default(false)
+
+  property     Property? @relation(fields: [propertyId], references: [id])
+  propertyId   String?
+
+  unit         Unit?     @relation(fields: [unitId], references: [id])
+  unitId       String?
+
+  payments     Payment[]
+}
+
+model Payment {
+  id        String    @id @default(cuid())
+  amount    Float
+  status    String    @default("DUE") // PAID, DUE, OVERDUE
+  dueDate   DateTime
+  paidDate  DateTime?
+  notes     String?
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenantId  String
+
+  createdAt DateTime  @default(now())
+}
